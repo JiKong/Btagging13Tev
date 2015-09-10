@@ -74,8 +74,14 @@ using namespace std;
 	int N_THINjet_after_deoverlap=0;
 	
 	// tcone15 te3st
-	float N_in_tcone15=0;
-	float N_out_tcone15=0;
+	float N_gen_in_tcone15=0;
+	float N_gen_out_tcone15=0;
+	float N_rec_in_tcone15=0;
+	float N_rec_out_tcone15=0;
+	
+	
+	int N_gen_good_t=0;
+	int N_rec_good_t=0;
 
 
 
@@ -549,6 +555,30 @@ void save_hist(TH1D* h_, TString dirname, TString filename) // type: eff mr
 
 }
 
+void save_overlap_hist(TH1D* h1_,TH1D* h2_, TString dirname, TString filename) // type: eff mr
+{
+	   
+	TCanvas *c1 = new TCanvas(filename,filename,200,10,700,500);
+
+	//c1->SetFillColor(42);
+	c1->SetGrid();
+	c1->GetFrame()->SetFillColor(21);
+	c1->GetFrame()->SetBorderSize(12);
+
+	h1_->SetLineColor(4);
+	h2_->SetLineColor(3);
+	
+	h1_->Draw();  
+	h2_->Draw("same"); // overlay
+	
+	TImage *img1 = TImage::Create();
+	img1->FromPad(c1);
+	img1->WriteImage("./"+dirname+"/"+filename+".png");
+	delete c1;
+	delete img1;
+
+}
+
 // general
 Float_t delta_R(PO O1_,PO O2_)
 {
@@ -955,13 +985,17 @@ void Btagging_in_13Tev()
 		
 		
 		// gen level hist set
-		TH1D* h_dr_tb = new TH1D("h_dr_tb","h_dr_tb",700,0,7);
-		TH1D* h_dr_tq = new TH1D("h_dr_tq","h_dr_tq",700,0,7);
-		TH1D* h_dr_tqbar = new TH1D("h_dr_tqbar","h_dr_tqbar",700,0,7);
+		TH1D* h_gen_dr_tb = new TH1D("h_gen_dr_tb","h_gen_dr_tb",700,0,7);
+		TH1D* h_gen_dr_tq = new TH1D("h_gen_dr_tq","h_gen_dr_tq",700,0,7);
+		TH1D* h_gen_dr_tqbar = new TH1D("h_gen_dr_tqbar","h_gen_dr_tqbar",700,0,7);
 		
-		TH1D* h_dr_tP4b = new TH1D("h_dr_tP4b","h_dr_tP4b",700,0,7);
-		TH1D* h_dr_tP4q = new TH1D("h_dr_tP4q","h_dr_tP4q",700,0,7);
-		TH1D* h_dr_tP4qbar = new TH1D("h_dr_tP4qbar","h_dr_tP4qbar",700,0,7);
+		TH1D* h_gen_dr_tP4b = new TH1D("h_gen_dr_tP4b","h_gen_dr_tP4b",700,0,7);
+		TH1D* h_gen_dr_tP4q = new TH1D("h_gen_dr_tP4q","h_gen_dr_tP4q",700,0,7);
+		TH1D* h_gen_dr_tP4qbar = new TH1D("h_gen_dr_tP4qbar","h_gen_dr_tP4qbar",700,0,7);
+		
+		TH1D* h_rec_dr_tP4b = new TH1D("h_rec_dr_tP4b","h_rec_dr_tP4b",700,0,7);
+		TH1D* h_rec_dr_tP4q = new TH1D("h_rec_dr_tP4q","h_rec_dr_tP4q",700,0,7);
+		TH1D* h_rec_dr_tP4qbar = new TH1D("h_rec_dr_tP4qbar","h_rec_dr_tP4qbar",700,0,7);
 		
 		
 	
@@ -1150,10 +1184,9 @@ void Btagging_in_13Tev()
 			}
 			for(int i=0;i<nGenPar;i++)  //gen par loop for TTbar sample
 			{
-				// only include qqbar ttbar bbar ele mu 
+				// only include qqbar  bbar ele mu 
 				if 
 				( 
-					(abs(genParId[i])==6)  ||
 					(abs(genParId[i])==5  && abs(genMomParId[i])==6) ||
 					( abs(genParId[i])<=5  && abs(genParId[i])>=1  && abs(genMomParId[i])==24) ||
 					( abs(genParId[i])==11  && abs(genMomParId[i])==24) || 
@@ -1221,18 +1254,24 @@ void Btagging_in_13Tev()
 			
 			int gen_b_index=-1;
 			int gen_bbar_index=-1;
-			int gen_t_index=-1;
-			int gen_tbar_index=-1;
 			int gen_q_from_wplus_index=-1;
 			int gen_qbar_from_wplus_index=-1;
 			int gen_q_from_wminus_index=-1;
 			int gen_qbar_from_wminus_index=-1;
+			
+			
+			int rec_b_index=-1;
+			int rec_bbar_index=-1;
+			int rec_q_from_wplus_index=-1;
+			int rec_qbar_from_wplus_index=-1;
+			int rec_q_from_wminus_index=-1;
+			int rec_qbar_from_wminus_index=-1;
+			
+			
 			for (int i=0;i< this_ev.gen_pars.size();i++)
 			{
 				gen_par this_g = this_ev.gen_pars[i];
-				if (this_g.id==6){gen_t_index=i;}      // t
-				else if (this_g.id==-6){gen_tbar_index=i;}	// tbar
-				else if (this_g.id==5 && this_g.mid == 6){gen_b_index=i;}	//b from t
+				if (this_g.id==5 && this_g.mid == 6){gen_b_index=i;}	//b from t
 				else if (this_g.id==-5 && this_g.mid == -6){gen_bbar_index=i;} //bbar from tbar
 				else if (this_g.id>=0 && this_g.id<=5 && this_g.mid == 24){gen_q_from_wplus_index=i;} //q from W+	
 				else if (this_g.id<=0 && this_g.id>=-5 && this_g.mid == 24){gen_qbar_from_wplus_index=i;} //qbar from W+
@@ -1241,55 +1280,88 @@ void Btagging_in_13Tev()
 			}
 		
 		
-			// h_dr_tb  :  delta R(t or tbar, daughter b or bbar )
-			if ( gen_t_index!=-1 && gen_b_index!=-1 )
-			{h_dr_tb->Fill(delta_R(this_ev.gen_pars[gen_t_index],this_ev.gen_pars[gen_b_index])); }
-			if ( gen_tbar_index!=-1 && gen_bbar_index!=-1)
-			{h_dr_tb->Fill(delta_R(this_ev.gen_pars[gen_tbar_index],this_ev.gen_pars[gen_bbar_index])); }
-			// h_dr_tq : delta R(t or tbar, daughter q )
-			if ( gen_t_index!=-1 && gen_q_from_wplus_index!=-1 )
-			{h_dr_tq->Fill(delta_R(this_ev.gen_pars[gen_t_index],this_ev.gen_pars[gen_q_from_wplus_index])); }
-			if ( gen_tbar_index!=-1 && gen_q_from_wminus_index!=-1)
-			{h_dr_tq->Fill(delta_R(this_ev.gen_pars[gen_tbar_index],this_ev.gen_pars[gen_q_from_wminus_index])); }
-			// h_dr_tqbar : delta R(t or tbar, daughter qbar )
-			if ( gen_t_index!=-1 && gen_qbar_from_wplus_index!=-1 )
-			{h_dr_tqbar->Fill(delta_R(this_ev.gen_pars[gen_t_index],this_ev.gen_pars[gen_qbar_from_wplus_index])); }
-			if ( gen_tbar_index!=-1 && gen_qbar_from_wminus_index!=-1)
-			{h_dr_tqbar->Fill(delta_R(this_ev.gen_pars[gen_tbar_index],this_ev.gen_pars[gen_qbar_from_wminus_index])); }
-			
-
-			// h_dr_tP4b, h_dr_tP4q,  h_dr_tP4qbar
-			if (gen_t_index!=-1 && gen_b_index!=-1 && gen_q_from_wplus_index!=-1 && gen_qbar_from_wplus_index!=-1)
+			for (int i=0;i<this_ev.THINjets.size();i++)
 			{
+			        //to make sure index==-1, means that get matching leading jet but not matching none-leading jet
+			        // (because there are beyond on jet to match a gen_par)
+				THINjet this_j = this_ev.THINjets[i];
+				if (rec_b_index==-1 && delta_R(this_j, this_ev.gen_pars[gen_b_index])<=0.4)
+				{ rec_b_index=i;}
+				else if (rec_bbar_index==-1 && delta_R(this_j, this_ev.gen_pars[gen_bbar_index])<=0.4)
+				{ rec_bbar_index=i;}
+				else if (rec_q_from_wplus_index==-1 && delta_R(this_j, this_ev.gen_pars[gen_q_from_wplus_index])<=0.4)
+				{ rec_q_from_wplus_index=i;}		
+				else if (rec_qbar_from_wplus_index==-1 && delta_R(this_j, this_ev.gen_pars[gen_qbar_from_wplus_index])<=0.4)
+				{ rec_qbar_from_wplus_index=i;}	
+				else if (rec_q_from_wminus_index==-1 && delta_R(this_j, this_ev.gen_pars[gen_q_from_wminus_index])<=0.4)
+				{ rec_q_from_wminus_index=i;}		
+				else if (rec_qbar_from_wminus_index==-1 && delta_R(this_j, this_ev.gen_pars[gen_qbar_from_wminus_index])<=0.4)
+				{ rec_qbar_from_wminus_index=i;}			
+			}
+		
+			// rec leval h_dr_tP4b, h_dr_tP4q,  h_dr_tP4qbar
+			if ( rec_b_index!=-1 && rec_q_from_wplus_index!=-1 && rec_qbar_from_wplus_index!=-1)
+			{
+				N_rec_good_t++;
+				TLorentzVector bl =this_ev.THINjets[rec_b_index].p4;
+				TLorentzVector ql =this_ev.THINjets[rec_q_from_wplus_index].p4;
+				TLorentzVector qbarl =this_ev.THINjets[rec_qbar_from_wplus_index].p4;
+				TLorentzVector tl = bl+ql+qbarl;
+				h_rec_dr_tP4b->Fill(delta_R(tl, bl ));
+				h_rec_dr_tP4q->Fill(delta_R(tl, ql ));
+				h_rec_dr_tP4qbar->Fill(delta_R(tl, qbarl ));
+				if (delta_R(tl, bl )<=1.5 && delta_R(tl, ql )<1.5 && delta_R(tl, qbarl )<1.5)
+				{ N_rec_in_tcone15++;}
+				else 
+				{N_rec_out_tcone15++;}
+			}
+			if ( rec_bbar_index!=-1 && rec_q_from_wminus_index!=-1 && rec_qbar_from_wminus_index!=-1)
+			{N_rec_good_t++;
+				TLorentzVector bl =this_ev.THINjets[rec_bbar_index].p4;
+				TLorentzVector ql =this_ev.THINjets[rec_q_from_wminus_index].p4;
+				TLorentzVector qbarl =this_ev.THINjets[rec_qbar_from_wminus_index].p4;
+				TLorentzVector tl = bl+ql+qbarl;
+				h_rec_dr_tP4b->Fill(delta_R(tl, bl ));
+				h_rec_dr_tP4q->Fill(delta_R(tl, ql ));
+				h_rec_dr_tP4qbar->Fill(delta_R(tl, qbarl ));
+				if (delta_R(tl, bl )<=1.5 && delta_R(tl, ql )<1.5 && delta_R(tl, qbarl )<1.5)
+				{ N_rec_in_tcone15++;}
+				else 
+				{N_rec_out_tcone15++;}
+			}
+			
+			// gen leval h_dr_tP4b, h_dr_tP4q,  h_dr_tP4qbar
+			if ( gen_b_index!=-1 && gen_q_from_wplus_index!=-1 && gen_qbar_from_wplus_index!=-1)
+			{N_gen_good_t++;
 				TLorentzVector bl =this_ev.gen_pars[gen_b_index].p4;
 				TLorentzVector ql =this_ev.gen_pars[gen_q_from_wplus_index].p4;
 				TLorentzVector qbarl =this_ev.gen_pars[gen_qbar_from_wplus_index].p4;
 				TLorentzVector tl = bl+ql+qbarl;
-				h_dr_tP4b->Fill(delta_R(tl, bl ));
-				h_dr_tP4q->Fill(delta_R(tl, ql ));
-				h_dr_tP4qbar->Fill(delta_R(tl, qbarl ));
+				h_gen_dr_tP4b->Fill(delta_R(tl, bl ));
+				h_gen_dr_tP4q->Fill(delta_R(tl, ql ));
+				h_gen_dr_tP4qbar->Fill(delta_R(tl, qbarl ));
 				if (delta_R(tl, bl )<=1.5 && delta_R(tl, ql )<1.5 && delta_R(tl, qbarl )<1.5)
-				{ N_in_tcone15++;}
+				{ N_gen_in_tcone15++;}
 				else 
-				{N_out_tcone15++;}
+				{N_gen_out_tcone15++;}
 			}
-			if (gen_tbar_index!=-1 && gen_bbar_index!=-1 && gen_q_from_wminus_index!=-1 && gen_qbar_from_wminus_index!=-1)
-			{
+			if ( gen_bbar_index!=-1 && gen_q_from_wminus_index!=-1 && gen_qbar_from_wminus_index!=-1)
+			{N_gen_good_t++;
 				TLorentzVector bl =this_ev.gen_pars[gen_bbar_index].p4;
 				TLorentzVector ql =this_ev.gen_pars[gen_q_from_wminus_index].p4;
 				TLorentzVector qbarl =this_ev.gen_pars[gen_qbar_from_wminus_index].p4;
 				TLorentzVector tl = bl+ql+qbarl;
-				h_dr_tP4b->Fill(delta_R(tl, bl ));
-				h_dr_tP4q->Fill(delta_R(tl, ql ));
-				h_dr_tP4qbar->Fill(delta_R(tl, qbarl ));
+				h_gen_dr_tP4b->Fill(delta_R(tl, bl ));
+				h_gen_dr_tP4q->Fill(delta_R(tl, ql ));
+				h_gen_dr_tP4qbar->Fill(delta_R(tl, qbarl ));
 				if (delta_R(tl, bl )<=1.5 && delta_R(tl, ql )<1.5 && delta_R(tl, qbarl )<1.5)
-				{ N_in_tcone15++;}
+				{ N_gen_in_tcone15++;}
 				else 
-				{N_out_tcone15++;}
+				{N_gen_out_tcone15++;}
 			}
-			
-			
-			
+
+
+
 
 			// to check this ttbar sample is semiletonic channel
 			if (!is_ttbar_semileptonic_sample(this_ev)){continue;}
@@ -1732,9 +1804,15 @@ void Btagging_in_13Tev()
 		cout<<endl;
 		
 		cout<<"=========================  tcone15 test  ==========================================="<<endl<<endl;
-		cout<<"N_in_tcone15/(N_in_tcone15+N_out_tcone15)="<<N_in_tcone15/(N_in_tcone15+N_out_tcone15)<<endl;
+		cout<<"N_gen_in_tcone15/(N_gen_in_tcone15+N_gen_out_tcone15)="<<N_gen_in_tcone15/(N_gen_in_tcone15+N_gen_out_tcone15)<<endl;
+		cout<<"N_rec_in_tcone15/(N_rec_in_tcone15+N_rec_out_tcone15)="<<N_rec_in_tcone15/(N_rec_in_tcone15+N_rec_out_tcone15)<<endl;
 		cout<<endl;
-				
+			
+			
+		cout<<"=========";
+		cout<<"N_gen_good_t:"<<N_gen_good_t<<endl;
+		cout<<"N_rec_good_t:"<<N_rec_good_t<<endl;
+			
 		zprime_sample_result.add_result(Nev_MC_pass_gen_selection, N_available_event_MC, true_eff, true_mr, best_eff_rec, results_btagging2p_rec[0].err, best_mr_rec,results_btagging2p_rec[1].err );
 		
 		
@@ -1941,12 +2019,12 @@ void Btagging_in_13Tev()
 	save_hist(h_N_THIN_b_jet, "pic_13Tev_TTbar", "N_THIN_b_jet");
 	save_hist(h_Ngenbjet, "pic_13Tev_TTbar", "Ngenbjet");
 
-	save_hist(h_dr_tb, "pic_13Tev_TTbar", "h_dr_tb");
-	save_hist(h_dr_tq, "pic_13Tev_TTbar", "h_dr_tq");
-	save_hist(h_dr_tqbar, "pic_13Tev_TTbar", "h_dr_tqbar");
-	save_hist(h_dr_tP4b, "pic_13Tev_TTbar", "h_dr_tP4b");
-	save_hist(h_dr_tP4q, "pic_13Tev_TTbar", "h_dr_tP4q");
-	save_hist(h_dr_tP4qbar, "pic_13Tev_TTbar", "h_dr_tP4qbar");
+	save_hist(h_gen_dr_tb, "pic_13Tev_TTbar", "h_dr_tb");
+	save_hist(h_gen_dr_tq, "pic_13Tev_TTbar", "h_dr_tq");
+	save_hist(h_gen_dr_tqbar, "pic_13Tev_TTbar", "h_dr_tqbar");
+	save_overlap_hist(h_gen_dr_tP4b, h_rec_dr_tP4b,"pic_13Tev_TTbar", "h_dr_tP4b");
+	save_overlap_hist(h_gen_dr_tP4q, h_rec_dr_tP4q,"pic_13Tev_TTbar", "h_dr_tP4q");
+	save_overlap_hist(h_gen_dr_tP4qbar, h_rec_dr_tP4qbar,"pic_13Tev_TTbar", "h_dr_tP4qbar");
 		
 			
 		//H_IM->Write();
