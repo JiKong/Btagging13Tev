@@ -305,7 +305,7 @@ void WJ_HT_comp()
 	  		vector<string> this_rootfile;
 	  		this_rootfile.push_back(path);
 	  		TreeReader this_reader(this_rootfile);
-	  		Nev_inclusive+=this_reader.GetEntriesFast(); 
+	  		
 			
 			Nev_index_counter+=this_reader.GetEntriesFast(); 		
 	  	}
@@ -323,7 +323,7 @@ void WJ_HT_comp()
 	  		vector<string> this_rootfile;
 	  		this_rootfile.push_back(path);
 	  		TreeReader this_reader(this_rootfile);
-	  		Nev_HT100to200+=this_reader.GetEntriesFast(); 
+	  		
 			
 			Nev_index_counter+=this_reader.GetEntriesFast(); 		
 	  	}
@@ -342,7 +342,7 @@ void WJ_HT_comp()
 	  		vector<string> this_rootfile;
 	  		this_rootfile.push_back(path);
 	  		TreeReader this_reader(this_rootfile);
-	  		Nev_HT200to400+=this_reader.GetEntriesFast(); 
+	  		
 			
 			Nev_index_counter+=this_reader.GetEntriesFast(); 		
 	  	}	
@@ -362,7 +362,7 @@ void WJ_HT_comp()
 	  		vector<string> this_rootfile;
 	  		this_rootfile.push_back(path);
 	  		TreeReader this_reader(this_rootfile);
-	  		Nev_HT400to600+=this_reader.GetEntriesFast(); 
+	  		
 			
 			Nev_index_counter+=this_reader.GetEntriesFast(); 		
 	  	}
@@ -382,7 +382,7 @@ void WJ_HT_comp()
 	  		vector<string> this_rootfile;
 	  		this_rootfile.push_back(path);
 	  		TreeReader this_reader(this_rootfile);
-	  		Nev_HT600to800+=this_reader.GetEntriesFast(); 
+	  		
 			
 			Nev_index_counter+=this_reader.GetEntriesFast(); 		
 	  	}
@@ -400,7 +400,7 @@ void WJ_HT_comp()
 	  		vector<string> this_rootfile;
 	  		this_rootfile.push_back(path);
 	  		TreeReader this_reader(this_rootfile);
-	  		Nev_HT800to1200+=this_reader.GetEntriesFast(); 
+	  		
 			
 			Nev_index_counter+=this_reader.GetEntriesFast(); 		
 	  	}
@@ -418,11 +418,34 @@ void WJ_HT_comp()
 	  		vector<string> this_rootfile;
 	  		this_rootfile.push_back(path);
 	  		TreeReader this_reader(this_rootfile);
-	  		Nev_HT1200to2500+=this_reader.GetEntriesFast(); 
+	  		
 			
 			Nev_index_counter+=this_reader.GetEntriesFast(); 		
 	  	}
+	
 	  	
+	  	// ===============================================calculate # of event each sample (including event weight)=============================================
+		TreeReader inner_data(input_files);	
+		Long64_t Nev_all_WJ = inner_data.GetEntriesFast();
+		for (Long64_t Nth = 0; Nth < Nev_all_WJ; Nth++)
+	  	{
+	  		inner_data.GetEntry(Nth);
+	  		if (Nth>=Nev_index_HT1200to2500) {Nev_HT1200to2500++;}
+			else if(Nth>=Nev_index_HT800to1200) {Nev_HT800to1200++;}
+			else if(Nth>=Nev_index_HT600to800) {Nev_HT600to800++;}
+			else if(Nth>=Nev_index_HT400to600) {Nev_HT400to600++;}
+			else if(Nth>=Nev_index_HT200to400) {Nev_HT200to400++;}
+			else if(Nth>=Nev_index_HT100to200) {Nev_HT100to200++;}
+			else if(Nth>=Nev_index_inclusive) 
+			{
+				int event_weight=0;
+	    			Float_t mcWeight=inner_data.GetFloat("mcWeight");
+	    			if (mcWeight>0){event_weight=1;}
+	    			else {event_weight=-1;}
+	    			Nev_inclusive+=event_weight; 
+	    		}
+	  	}
+	
 		// ===============================================calculate scale factor ======================================================================
 
 		sf_inclusive =data_lumi_13_Tev/((double)Nev_inclusive/Xs_inclusive);
@@ -434,12 +457,10 @@ void WJ_HT_comp()
 		sf_HT1200to2500 =data_lumi_13_Tev/((double)Nev_HT1200to2500/Xs_HT1200to2500);
 
 		//=========================================================draw hist=============================================================================	  			
-		
-		TreeReader inner_data(input_files);	
-		Long64_t Nev_all_WJ = inner_data.GetEntriesFast();
+	
 	  	//for (Long64_t Nth = 0; Nth < Nev_all_WJ; Nth++)  // draw all root file
-	  	//for (Long64_t Nth = 0; Nth < Nev_index_HT100to200; Nth++)  // only draw HT bin sample
-	  	for (Long64_t Nth = Nev_index_HT100to200; Nth < Nev_all_WJ; Nth++)  // only draw inclusive sample
+	  	for (Long64_t Nth = 0; Nth < Nev_index_HT100to200; Nth++)  // only draw inclusive bin sample
+	  	//for (Long64_t Nth = Nev_index_HT100to200; Nth < Nev_all_WJ; Nth++)  // only draw HT sample
 	    	{	
 			
 			// event should pass event selection
