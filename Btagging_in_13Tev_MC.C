@@ -152,11 +152,16 @@ using namespace std;
 	double total_nbtag_pass_cut_rec=0;
 	
 
-	// data_lumi_13_Tev
-	//double data_lumi_13_Tev = 2297.21;
-	double data_lumi_13_Tev = 831.7; //  v3,v4 in Raman's sample. 
-	//double data_lumi_13_Tev = 370.2; // half root file on muon channel
-	//double data_lumi_13_Tev = 379.414;  // half root file on electron channel
+	// data_lumi_13_Tev new data
+	//double data_lumi_13_Tev = 2080; //  all sample files no matter for ele chaanel or muon channel. 
+
+	// ele chaanel
+	double data_lumi_13_Tev = 294.43; // 1/7 root file on muon channel
+
+	//muon channel
+	//double data_lumi_13_Tev = 344.89; // 1/6 root file on muon channel
+	//double data_lumi_13_Tev = 418.33; // 1/5 root file on muon channel
+	
 	
 	// MC sample X-section(only central value):
 	double Xs_ttbar = 831.76;
@@ -607,6 +612,61 @@ bool is_pass_mu_idiso(mu m_)
 
 }
 
+double get_Tmass(event ev)
+{
+	vector<THINjet> this_THINjets = ev.THINjets_deoverlap_with_lepton;
+
+	bool find_good_Wqqbar=false;
+	int q1_index=-1;
+	int q2_index=-1;
+	double rec_Wmass=0;
+	for (int i=0;i<this_THINjets.size();i++)
+	{
+		for (int j=0;j<i;j++)
+		{
+			if (!is_pass_cisvv2_13Tev(this_THINjets[i]) && !is_pass_cisvv2_13Tev(this_THINjets[j]) )
+			{
+				TLorentzVector q1l= this_THINjets[i].p4;
+				TLorentzVector q2l= this_THINjets[j].p4;
+				TLorentzVector Wl= q1l+q2l;
+				double this_Wmass = Wl.M();
+				if (abs(this_Wmass-80) <=20){find_good_Wqqbar=true;}
+				if (abs(this_Wmass-80) <= abs(rec_Wmass-81))
+				{
+					rec_Wmass=this_Wmass;
+					q1_index=i;
+					q2_index=j;					
+				}  
+			}
+		}
+	}
+
+	if (!find_good_Wqqbar){return -1;}
+
+	bool find_good_b=false;
+	double rec_Tmass=-1;
+	for (int i=0;i<this_THINjets.size();i++)
+	{
+		if (is_pass_cisvv2_13Tev(this_THINjets[i])) 
+		{
+			find_good_b=true;
+			TLorentzVector bq= this_THINjets[i].p4;
+			TLorentzVector q1l= this_THINjets[q1_index].p4;
+			TLorentzVector q2l= this_THINjets[q2_index].p4;
+			TLorentzVector Tl= bq+q1l+q2l;
+			double this_Tmass = Tl.M();
+			if (abs(this_Tmass-174) <= abs(rec_Tmass-174))
+			{
+				rec_Tmass=this_Tmass;				
+			}  			 
+		}
+	}
+
+	if (!find_good_b){return -1;}
+	else {return rec_Tmass;}
+
+
+}
 
 
 //event selection
@@ -619,7 +679,8 @@ bool is_pass_ev_selection_TTbar(event ev)
 {
 
 	// trigger path
-	if (!ev.is_pass_mu_trigger){return false;}
+	//if (!ev.is_pass_mu_trigger){return false;}
+	if (!ev.is_pass_ele_trigger){return false;}
 	
 	// same as theevent selection on ttbar sample, be cause we will see how ttbar selection works.....
 	int ev_flag=0;
@@ -627,20 +688,21 @@ bool is_pass_ev_selection_TTbar(event ev)
 	// 1: event must have 1 good muon, isolated, PT>50, |Eta|<2.1
 	vector<ele> good_eles=ev.good_eles;
 	bool have_available_ele=false;
-	/*
 	//electron channel
+	
 	for (int i=0;i<good_eles.size();i++)
 	{
 		ele this_e=good_eles[i];
-		if (this_e.p4.Pt()>50 && abs(this_e.p4.Eta())<2.1)
+		if (this_e.p4.Pt()>0 && abs(this_e.p4.Eta())<2.4)
 		{ have_available_ele=true; break;}
 	}
 	if(!have_available_ele)
 	{ev_flag=2; return false;}
-	*/
+	
 	 
 	// muon channel
 	vector<mu> good_mus=ev.good_mus;
+/*
 	bool have_available_muon=false;
 	for (int i=0;i<good_mus.size();i++)
 	{
@@ -650,8 +712,7 @@ bool is_pass_ev_selection_TTbar(event ev)
 	}
 	if(!have_available_muon)
 	{ev_flag=2; return false;}
-	
-
+*/
 
 	
 
@@ -691,75 +752,15 @@ bool is_pass_ev_selection_TTbar(event ev)
 	//if (ev.missing_et.pt<20){ev_flag=5;return false;}
 	if (ev.missing_et.pt<20){ev_flag=5;return false;}
 
-//test
-	return true;
+	if (get_Tmass(ev)==-1){return false;}
+
 	
-	/*
-	ev_flag:
-		=0: this event is good event
-		=2: !(have good lepton), skip this event.
-		=3: !(have at least 2 good jets), skip this event.
-		=4: !(have 2 good leading jets), skip this event.
-		=5: !(missing Et > 20), skip this event.
-	*/
-}
-
-
-double get_Tmass(event ev)
-{
-	vector<THINjet> this_THINjets = ev.THINjets_deoverlap_with_lepton;
-
-	bool find_good_Wqqbar=false;
-	int q1_index=-1;
-	int q2_index=-1;
-	double rec_Wmass=0;
-	for (int i=0;i<this_THINjets.size();i++)
-	{
-		for (int j=0;j<i;j++)
-		{
-			if (!is_pass_cisvv2_13Tev(this_THINjets[i]) && !is_pass_cisvv2_13Tev(this_THINjets[j]) )
-			{
-				TLorentzVector q1l= this_THINjets[i].p4;
-				TLorentzVector q2l= this_THINjets[j].p4;
-				TLorentzVector Wl= q1l+q2l;
-				double this_Wmass = Wl.M();
-				if (abs(this_Wmass-81) <=20){find_good_Wqqbar=true;}
-				if (abs(this_Wmass-81) <= abs(rec_Wmass-81))
-				{
-					rec_Wmass=this_Wmass;
-					q1_index=i;
-					q2_index=j;					
-				}  
-			}
-		}
-	}
-
-	if (!find_good_Wqqbar){return -1;}
-
-	bool find_good_b=false;
-	double rec_Tmass=-1;
-	for (int i=0;i<this_THINjets.size();i++)
-	{
-		if (is_pass_cisvv2_13Tev(this_THINjets[i])) 
-		{
-			find_good_b=true;
-			TLorentzVector bq= this_THINjets[i].p4;
-			TLorentzVector q1l= this_THINjets[q1_index].p4;
-			TLorentzVector q2l= this_THINjets[q2_index].p4;
-			TLorentzVector Tl= bq+q1l+q2l;
-			double this_Tmass = Tl.M();
-			if (abs(this_Tmass-174) <= abs(rec_Tmass-174))
-			{
-				rec_Tmass=this_Tmass;				
-			}  			 
-		}
-	}
-
-	if (!find_good_b){return -1;}
-	else {return rec_Tmass;}
-
+	return true;
 
 }
+
+
+
 
 
 double get_scaled_value(Long_t Nth_)
@@ -1045,7 +1046,7 @@ void Btagging_in_13Tev_MC()
 		stack_hist* sh_ele_EtaseedAtVtx_a_evcut = new stack_hist("ele_EtaseedAtVtx_a_evcut","ele_EtaseedAtVtx_a_evcut",50,-0.2,0.2);
 		stack_hist* sh_ele_HoverE_a_evcut = new stack_hist("ele_HoverE_a_evcut","ele_HoverE_a_evcut",50,0,6);
 		stack_hist* sh_ele_MissHits_a_evcut = new stack_hist("ele_MissHits_a_evcut","ele_MissHits_a_evcut",7,0,7);
-		stack_hist* sh_ele_MiniIso_a_evcut = new stack_hist("ele_MiniIso_a_evcut","ele_MiniIso_a_evcut",50,0,10);
+		//stack_hist* sh_ele_MiniIso_a_evcut = new stack_hist("ele_MiniIso_a_evcut","ele_MiniIso_a_evcut",50,0,10);
 		stack_hist* sh_ele_SigmaIEtaIEta_a_evcut = new stack_hist("ele_SigmaIEtaIEta_a_evcut","ele_SigmaIEtaIEta_a_evcut",50,0,0.08);
 		
 		//mu var (insignificant var)
@@ -1056,7 +1057,7 @@ void Btagging_in_13Tev_MC()
 		stack_hist* sh_mu_dz_a_evcut = new stack_hist("mu_dz_a_evcut","mu_dz_a_evcut",40,-2,2);		
 		stack_hist* sh_mu_Hits_a_evcut = new stack_hist("mu_Hits_a_evcut","mu_Hits_a_evcut",50,0,100);
 		stack_hist* sh_mu_Matches_a_evcut = new stack_hist("mu_Matches_a_evcut","mu_Matches_a_evcut",10,0,10);	
-		stack_hist* sh_mu_MiniIso_a_evcut = new stack_hist("mu_MiniIso_a_evcut","mu_MiniIso_a_evcut",50,0,100);
+		//stack_hist* sh_mu_MiniIso_a_evcut = new stack_hist("mu_MiniIso_a_evcut","mu_MiniIso_a_evcut",50,0,100);
 		stack_hist* sh_mu_PixelHits_a_evcut = new stack_hist("mu_PixelHits_a_evcut","mu_PixelHits_a_evcut",20,0,20);
 		stack_hist* sh_mu_TrkLayers_a_evcut = new stack_hist("mu_TrkLayers_a_evcut","mu_TrkLayers_a_evcut",25,0,25);
 		stack_hist* sh_mu_TrkPt_a_evcut = new stack_hist("mu_TrkPt_a_evcut","mu_TrkPt_a_evcut",50,0,500);
@@ -1099,13 +1100,15 @@ void Btagging_in_13Tev_MC()
 
  		//key word:%5 
 		int N_applied_sample_min=0;
-		int N_applied_sample_max=20;
+		int N_applied_sample_max=10;
 
 	  	// TTbar first 1000 sample
 	  	bool is_save_Nev_index_ttbar =false;
 	  	for (int i=1;i<=999;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%100)!=0){continue;}
+	  		
 			if (i==36 || i==70 ||i==304 || i==311){continue;}
 			if (!is_save_Nev_index_ttbar){Nev_index_ttbar=Nev_index_counter; is_save_Nev_index_ttbar=true; }
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_2015_10_12/crab_TT_TuneCUETP8M1_13TeV-powheg-pythia8MC25ns_eleIDjet_CMSSW7412_20151006/151007_220812/0000/NCUGlobalTuples_"+int_to_string(i)+".root";
@@ -1122,7 +1125,9 @@ void Btagging_in_13Tev_MC()
 	  	// TTbar second 1000 sample
 	  	for (int i=1000;i<=1999;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%100)!=0){continue;}
+	  		
 			if(i==1030 || i==1039 || i==1047 || i==1102){continue;}
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_2015_10_12/crab_TT_TuneCUETP8M1_13TeV-powheg-pythia8MC25ns_eleIDjet_CMSSW7412_20151006/151007_220812/0001/NCUGlobalTuples_"+int_to_string(i)+".root";
 	  		input_files.push_back(path);
@@ -1138,7 +1143,9 @@ void Btagging_in_13Tev_MC()
 	  	// TTbar remain sample
 	  	for (int i=2000;i<=2106;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%100)!=0){continue;}
+	  		
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_2015_10_12/crab_TT_TuneCUETP8M1_13TeV-powheg-pythia8MC25ns_eleIDjet_CMSSW7412_20151006/151007_220812/0002/NCUGlobalTuples_"+int_to_string(i)+".root";
 	  		input_files.push_back(path);
 	  		
@@ -1249,8 +1256,8 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_DY_inclusive=false;
 	  	for (int i=1;i<=671;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
-			//if(i>=300){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%30)!=0){continue;}
 
 	  		if(i==124 || i==205){continue;}
 
@@ -1270,10 +1277,10 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_QCD100to200=false;
 	  	for (int i=1;i<=812;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
-			//if (i>20){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%10)!=0){continue;}
 			
-	  		if(i==9 ){continue;}
+	  		if(i==9 || i==90 || i==760){continue;}
 	  		if (!is_save_Nev_index_QCD100to200){Nev_index_QCD100to200=Nev_index_counter; is_save_Nev_index_QCD100to200=true; }
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_2015_10_12/crab_QCD_HT100to200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8MC25ns_eleIDjet_CMSSW7412_20151006/151007_220208/0000/NCUGlobalTuples_"+int_to_string(i)+".root";  				
 			input_files.push_back(path);
@@ -1290,10 +1297,10 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_QCD200to300=false;
 	  	for (int i=1;i<=515;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
-			//if (i>20){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%10)!=0){continue;}
 
-	  		if( i==12 ){continue;}
+	  		if( i==12 || i==470){continue;}
 	  		if (!is_save_Nev_index_QCD200to300){Nev_index_QCD200to300=Nev_index_counter; is_save_Nev_index_QCD200to300=true; }
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_2015_10_12/crab_QCD_HT200to300_TuneCUETP8M1_13TeV-madgraphMLM-pythia8MC25ns_eleIDjet_CMSSW7412_20151006/151007_220428/0000/NCUGlobalTuples_"+int_to_string(i)+".root";  				
 			input_files.push_back(path);
@@ -1310,8 +1317,8 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_QCD300to500=false;
 	  	for (int i=1;i<=564;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
-			//if (i>20){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%50)!=0){continue;}
 
 	  		if( i==9  ){continue;}
 	  		if (!is_save_Nev_index_QCD300to500){Nev_index_QCD300to500=Nev_index_counter; is_save_Nev_index_QCD300to500=true; }
@@ -1330,8 +1337,8 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_QCD500to700=false;
 	  	for (int i=1;i<=495;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
-			//if (i>20){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%50)!=0){continue;}
 
 	  		//if(i==6 || i==7 || i==8 || i==9 || (i>=50 && i<=99) || i==370 ){continue;}
 	  		if (!is_save_Nev_index_QCD500to700){Nev_index_QCD500to700=Nev_index_counter; is_save_Nev_index_QCD500to700=true; }
@@ -1350,8 +1357,8 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_QCD700to1000=false;
 	  	for (int i=1;i<=393;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
-			//if (i>20){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%50)!=0){continue;}
 
 	  		if(i==6 || i==7 || i==8 || i==9 || (i>=50 && i<=99) || i==370 ){continue;}
 	  		if (!is_save_Nev_index_QCD700to1000){Nev_index_QCD700to1000=Nev_index_counter; is_save_Nev_index_QCD700to1000=true; }
@@ -1371,8 +1378,8 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_QCD1000to1500=false;
 	  	for (int i=1;i<=154;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
-			//if (i>20){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%50)!=0){continue;}
 
 			//if(i>=400){continue;}
 	  		if(i==41){continue;}
@@ -1396,9 +1403,9 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_QCD1500to2000=false;
 	  	for (int i=1;i<=101;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
-			//if (i>20){continue;}
-			//if(i>=400){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%20)!=0){continue;}
+	  		
 	  		if(i==1 || i==6 || i==84 || i==94 || i==95){continue;}
 
 			if (!is_save_Nev_index_QCD1500to2000){Nev_index_QCD1500to2000=Nev_index_counter; is_save_Nev_index_QCD1500to2000=true; }
@@ -1418,7 +1425,9 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_QCD2000toInf=false;
 	  	for (int i=1;i<=70;i++)
 	  	{
-	  		if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		//if (i>N_applied_sample_max || i<N_applied_sample_min){continue;}
+	  		if ((i%20)!=0){continue;}
+	  		
 			//if (i>20){continue;}
 			
 			if (!is_save_Nev_index_QCD2000toInf){Nev_index_QCD2000toInf=Nev_index_counter; is_save_Nev_index_QCD2000toInf=true; }
@@ -1459,7 +1468,9 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_WJ100to200=false;
 	  	for (int i=1;i<=235;i++)
 	  	{
-	  		if (i>=10){continue;}
+	  		//if (i>=10){continue;}
+	  		if ((i%20)!=0){continue;}
+	  		
 			if (!is_save_Nev_index_WJ100to200){Nev_index_WJ100to200=Nev_index_counter; is_save_Nev_index_WJ100to200=true; }
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_ReMiniAODSIM/WJetsHTBinSampleReMiniAOD/crab_WJetsToLNu_HT-100To200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8_MC25ns_ReMiniAOD_20151026/151025_235712/0000/NCUGlobalTuples_"+int_to_string(i)+".root";
 	  		input_files.push_back(path);
@@ -1476,7 +1487,9 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_WJ200to400=false;
 	  	for (int i=1;i<=114;i++)
 	  	{
-	  		if (i>=10){continue;}
+	  		//if (i>=10){continue;}
+	  		if ((i%20)!=0){continue;}
+	  		
 	  		if(i==7 || i==8 || i==9 || (i>=65 && i<=99) ){continue;}
 			if (!is_save_Nev_index_WJ200to400){Nev_index_WJ200to400=Nev_index_counter; is_save_Nev_index_WJ200to400=true; }
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_ReMiniAODSIM/WJetsHTBinSampleReMiniAOD/crab_WJetsToLNu_HT-200To400_TuneCUETP8M1_13TeV-madgraphMLM-pythia8_MC25ns_ReMiniAOD_20151026/151025_235758/0000/NCUGlobalTuples_"+int_to_string(i)+".root";
@@ -1495,7 +1508,9 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_WJ400to600=false;
 	  	for (int i=1;i<=44;i++)
 	  	{
-	  		if (i>=10){continue;}
+	  		//if (i>=10){continue;}
+	  		if ((i%20)!=0){continue;}
+	  		
 	  		if(i==38 ){continue;}
 			if (!is_save_Nev_index_WJ400to600){Nev_index_WJ400to600=Nev_index_counter; is_save_Nev_index_WJ400to600=true; }
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_ReMiniAODSIM/WJetsHTBinSampleReMiniAOD/crab_WJetsToLNu_HT-400To600_TuneCUETP8M1_13TeV-madgraphMLM-pythia8_MC25ns_ReMiniAOD_20151026/151025_235853/0000/NCUGlobalTuples_"+int_to_string(i)+".root";
@@ -1514,7 +1529,9 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_WJ600to800=false;
 	  	for (int i=1;i<=97;i++)
 	  	{
-	  		if (i>=10){continue;}
+	  		//if (i>=10){continue;}
+	  		if ((i%20)!=0){continue;}
+	  		
 	  		
 			if (!is_save_Nev_index_WJ600to800){Nev_index_WJ600to800=Nev_index_counter; is_save_Nev_index_WJ600to800=true; }
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_ReMiniAODSIM/WJetsHTBinSampleReMiniAOD/crab_WJetsToLNu_HT-600To800_TuneCUETP8M1_13TeV-madgraphMLM-pythia8_MC25ns_ReMiniAOD_20151026/151025_235938/0000/NCUGlobalTuples_"+int_to_string(i)+".root";
@@ -1532,7 +1549,9 @@ void Btagging_in_13Tev_MC()
 	  	bool is_save_Nev_index_WJ800to1200=false;
 	  	for (int i=1;i<=39;i++)
 	  	{
-	  		if (i>=10){continue;}
+	  		//if (i>=10){continue;}
+	  		if ((i%20)!=0){continue;}
+	  		
 			if (!is_save_Nev_index_WJ800to1200){Nev_index_WJ800to1200=Nev_index_counter; is_save_Nev_index_WJ800to1200=true; }
 			string path = "/data7/khurana/NCUGlobalTuples/SPRING15_ReMiniAODSIM/WJetsHTBinSampleReMiniAOD/crab_WJetsToLNu_HT-800To1200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8_MC25ns_ReMiniAOD_20151026/151026_000033/0000/NCUGlobalTuples_"+int_to_string(i)+".root";
 	  		input_files.push_back(path);
@@ -2048,19 +2067,19 @@ void Btagging_in_13Tev_MC()
 
 
 				bool overlap_with_lepton=false;
-				/*
+				
 				for (int elei=0;elei<this_ev.good_eles.size();elei++)
 				{	
 					ele this_ele = this_ev.good_eles[elei];
 					if (delta_R(this_j, this_ele)<0.4){overlap_with_lepton=true;break;}
 				}
-				*/
+				/*
 				for (int mui=0;mui<this_ev.good_mus.size();mui++)
 				{
 					mu this_mu = this_ev.good_mus[mui];
 					if (delta_R(this_j, this_mu)<0.4){overlap_with_lepton=true;break;}
 				}
-				
+				*/
 				if (overlap_with_lepton){ continue;}
 			
 				this_ev.THINjets_deoverlap_with_lepton.push_back(this_j);
@@ -2071,7 +2090,7 @@ void Btagging_in_13Tev_MC()
 		
 			// draw insignificant var (these insignificant var did not saved in class event, excluding pt & eta )
 			// when event pass event selection
-			// // ele
+			// // ele (only 1 ele decayed from ttbar)
 			
 			Float_t *eledEtaAtVtx=inner_data_for_MC.GetPtrFloat("eledEtaAtVtx");
 			Float_t *eledPhiAtVtx=inner_data_for_MC.GetPtrFloat("eledPhiAtVtx");
@@ -2079,13 +2098,18 @@ void Btagging_in_13Tev_MC()
 			Float_t *eleEtaseedAtVtx=inner_data_for_MC.GetPtrFloat("eleEtaseedAtVtx");
 			Float_t *eleHoverE=inner_data_for_MC.GetPtrFloat("eleHoverE");
 			Int_t *eleMissHits=inner_data_for_MC.GetPtrInt("eleMissHits");
-			Float_t *eleMiniIso=inner_data_for_MC.GetPtrFloat("eleMiniIso");
+			//Float_t *eleMiniIso=inner_data_for_MC.GetPtrFloat("eleMiniIso");
 			Float_t *eleSigmaIEtaIEta=inner_data_for_MC.GetPtrFloat("eleSigmaIEtaIEta");
 	
 			if (is_pass_ev_selection(this_ev))
 			{
+				bool find_candidate_ele=false;
 				for (int i=0;i<nEle;i++)
 				{
+					if (eleIsPassLoose[i] && (*((TLorentzVector*)eleP4->At(i))).Pt()>0 && abs( (*((TLorentzVector*)eleP4->At(i))).Eta())<2.4)
+					{find_candidate_ele=true;}
+					else{continue;}
+
 					sh_ele_pt_a_evcut->fill_hist( (*((TLorentzVector*)eleP4->At(i))).Pt(), scaled_value*events_MC[Nth].event_weight, Nth);
 			 		sh_ele_eta_a_evcut->fill_hist( (*((TLorentzVector*)eleP4->At(i))).Eta(), scaled_value*events_MC[Nth].event_weight, Nth); 
 			 		sh_ele_dEtaAtVtx_a_evcut->fill_hist(eledEtaAtVtx[i], scaled_value*events_MC[Nth].event_weight, Nth); 
@@ -2095,8 +2119,10 @@ void Btagging_in_13Tev_MC()
 			 		sh_ele_EtaseedAtVtx_a_evcut ->fill_hist(eleEtaseedAtVtx[i], scaled_value*events_MC[Nth].event_weight, Nth); 
 			 		sh_ele_HoverE_a_evcut->fill_hist(eleHoverE[i], scaled_value*events_MC[Nth].event_weight, Nth); 
 			 		sh_ele_MissHits_a_evcut->fill_hist(eleMissHits[i], scaled_value*events_MC[Nth].event_weight, Nth); 
-			 		sh_ele_MiniIso_a_evcut->fill_hist(eleMiniIso[i], scaled_value*events_MC[Nth].event_weight, Nth); 
+			 		//sh_ele_MiniIso_a_evcut->fill_hist(eleMiniIso[i], scaled_value*events_MC[Nth].event_weight, Nth); 
 					sh_ele_SigmaIEtaIEta_a_evcut->fill_hist(eleSigmaIEtaIEta[i], scaled_value*events_MC[Nth].event_weight, Nth); 
+
+					if (find_candidate_ele){break;}
 				}	
 			}
 
@@ -2107,17 +2133,19 @@ void Btagging_in_13Tev_MC()
 			Float_t *mudz=inner_data_for_MC.GetPtrFloat("mudz");		
 			Int_t *muHits=inner_data_for_MC.GetPtrInt("muHits");		
 			Int_t *muMatches=inner_data_for_MC.GetPtrInt("muMatches");		
-			Float_t *muMiniIso=inner_data_for_MC.GetPtrFloat("muMiniIso");		
+			//Float_t *muMiniIso=inner_data_for_MC.GetPtrFloat("muMiniIso");		
 			Int_t *muPixelHits=inner_data_for_MC.GetPtrInt("muPixelHits");		
 			Int_t *muTrkLayers=inner_data_for_MC.GetPtrInt("muTrkLayers");		
 			Float_t *muTrkPt=inner_data_for_MC.GetPtrFloat("muTrkPt");
 
+/*
 			if (is_pass_ev_selection(this_ev))
 			{
 				bool find_candidate_mu=false;
 				for (int i=0;i<nMu;i++)
 				{
-					if (isTightMuon[i] && (*((TLorentzVector*)muP4->At(i))).Pt()>50){find_candidate_mu=true;}
+					if (isLooseMuon[i] && (*((TLorentzVector*)muP4->At(i))).Pt()>50 && abs( (*((TLorentzVector*)muP4->At(i))).Eta())<2.1)
+					{find_candidate_mu=true;}
 					else{continue;}
 					
 					sh_mu_pt_a_evcut->fill_hist( (*((TLorentzVector*)muP4->At(i))).Pt(), scaled_value*events_MC[Nth].event_weight, Nth);	
@@ -2126,7 +2154,7 @@ void Btagging_in_13Tev_MC()
 					sh_mu_dz_a_evcut->fill_hist(mudz[i], scaled_value*events_MC[Nth].event_weight, Nth); 	
 					sh_mu_Hits_a_evcut->fill_hist(muHits[i], scaled_value*events_MC[Nth].event_weight, Nth); 
 					sh_mu_Matches_a_evcut->fill_hist(muMatches[i], scaled_value*events_MC[Nth].event_weight, Nth); 
-					sh_mu_MiniIso_a_evcut->fill_hist(muMiniIso[i], scaled_value*events_MC[Nth].event_weight, Nth); 
+					//sh_mu_MiniIso_a_evcut->fill_hist(muMiniIso[i], scaled_value*events_MC[Nth].event_weight, Nth); 
 					sh_mu_PixelHits_a_evcut->fill_hist(muPixelHits[i], scaled_value*events_MC[Nth].event_weight, Nth); 
 					sh_mu_TrkLayers_a_evcut->fill_hist(muTrkLayers[i], scaled_value*events_MC[Nth].event_weight, Nth); 
 					sh_mu_TrkPt_a_evcut->fill_hist(muTrkPt[i], scaled_value*events_MC[Nth].event_weight, Nth); 
@@ -2134,6 +2162,7 @@ void Btagging_in_13Tev_MC()
 					if (find_candidate_mu){break;}
 				}	
 			}
+*/
 
 			// THINjet var (only 4 good jet decayed from ttbar)
 			
@@ -2709,7 +2738,7 @@ void Btagging_in_13Tev_MC()
 	sh_ele_EtaseedAtVtx_a_evcut->save_sh( "pic_13Tev_MC", "ele_EtaseedAtVtx_a_evcut"); 
 	sh_ele_HoverE_a_evcut->save_sh( "pic_13Tev_MC", "ele_HoverE_a_evcut");
 	sh_ele_MissHits_a_evcut->save_sh( "pic_13Tev_MC", "ele_MissHits_a_evcut");
-	sh_ele_MiniIso_a_evcut->save_sh( "pic_13Tev_MC", "ele_MiniIso_a_evcut");
+	//sh_ele_MiniIso_a_evcut->save_sh( "pic_13Tev_MC", "ele_MiniIso_a_evcut");
 	sh_ele_SigmaIEtaIEta_a_evcut->save_sh( "pic_13Tev_MC", "ele_SigmaIEtaIEta_a_evcut");
 		
 	//mu var (insignificant var)
@@ -2720,7 +2749,7 @@ void Btagging_in_13Tev_MC()
 	sh_mu_dz_a_evcut->save_sh( "pic_13Tev_MC", "mu_dz_a_evcut"); 
 	sh_mu_Hits_a_evcut->save_sh( "pic_13Tev_MC", "mu_Hits_a_evcut"); 
 	sh_mu_Matches_a_evcut->save_sh( "pic_13Tev_MC", "mu_Matches_a_evcut");
-	sh_mu_MiniIso_a_evcut->save_sh( "pic_13Tev_MC", "mu_MiniIso_a_evcut"); 
+	//sh_mu_MiniIso_a_evcut->save_sh( "pic_13Tev_MC", "mu_MiniIso_a_evcut"); 
 	sh_mu_PixelHits_a_evcut->save_sh( "pic_13Tev_MC", "mu_PixelHits_a_evcut"); 
 	sh_mu_TrkLayers_a_evcut->save_sh( "pic_13Tev_MC", "mu_TrkLayers_a_evcut");
 	sh_mu_TrkPt_a_evcut->save_sh( "pic_13Tev_MC", "mu_TrkPt_a_evcut"); 

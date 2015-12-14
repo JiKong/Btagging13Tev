@@ -368,6 +368,64 @@ bool is_pass_mu_idiso(mu m_)
 }
 
 
+
+double get_Tmass(event ev)
+{
+	vector<THINjet> this_THINjets = ev.THINjets_deoverlap_with_lepton;
+
+	bool find_good_Wqqbar=false;
+	int q1_index=-1;
+	int q2_index=-1;
+	double rec_Wmass=0;
+	for (int i=0;i<this_THINjets.size();i++)
+	{
+		for (int j=0;j<i;j++)
+		{
+			if (!is_pass_cisvv2_13Tev(this_THINjets[i]) && !is_pass_cisvv2_13Tev(this_THINjets[j]) )
+			{
+				TLorentzVector q1l= this_THINjets[i].p4;
+				TLorentzVector q2l= this_THINjets[j].p4;
+				TLorentzVector Wl= q1l+q2l;
+				double this_Wmass = Wl.M();
+				if (abs(this_Wmass-80) <=20){find_good_Wqqbar=true;}
+				if (abs(this_Wmass-80) <= abs(rec_Wmass-81))
+				{
+					rec_Wmass=this_Wmass;
+					q1_index=i;
+					q2_index=j;					
+				}  
+			}
+		}
+	}
+
+	if (!find_good_Wqqbar){return -1;}
+
+	bool find_good_b=false;
+	double rec_Tmass=-1;
+	for (int i=0;i<this_THINjets.size();i++)
+	{
+		if (is_pass_cisvv2_13Tev(this_THINjets[i])) 
+		{
+			find_good_b=true;
+			TLorentzVector bq= this_THINjets[i].p4;
+			TLorentzVector q1l= this_THINjets[q1_index].p4;
+			TLorentzVector q2l= this_THINjets[q2_index].p4;
+			TLorentzVector Tl= bq+q1l+q2l;
+			double this_Tmass = Tl.M();
+			if (abs(this_Tmass-174) <= abs(rec_Tmass-174))
+			{
+				rec_Tmass=this_Tmass;				
+			}  			 
+		}
+	}
+
+	if (!find_good_b){return -1;}
+	else {return rec_Tmass;}
+
+
+}
+
+
 //event selection
 
 
@@ -376,8 +434,9 @@ bool is_pass_ev_selection_TTbar(event ev)
 {
 
 	// trigger path
-	if (!ev.is_pass_mu_trigger){return false;}
-	
+	//if (!ev.is_pass_mu_trigger){return false;}
+	if (!ev.is_pass_ele_trigger){return false;}
+
 	// same as theevent selection on ttbar sample, be cause we will see how ttbar selection works.....
 	int channel=0; //1 for ele, 2 for mu
 	int ev_flag=0;
@@ -386,19 +445,20 @@ bool is_pass_ev_selection_TTbar(event ev)
 	vector<ele> good_eles=ev.good_eles;
 	bool have_available_ele=false;
 	//electron channel
-	/*
+	
 	for (int i=0;i<good_eles.size();i++)
 	{
 		ele this_e=good_eles[i];
-		if (this_e.p4.Pt()>50 && abs(this_e.p4.Eta())<2.1)
+		if (this_e.p4.Pt()>0 && abs(this_e.p4.Eta())<2.4)
 		{ have_available_ele=true; break;}
 	}
 	if(!have_available_ele)
 	{ev_flag=2; return false;}
-	*/
+	
 	 
 	// muon channel
 	vector<mu> good_mus=ev.good_mus;
+/*
 	bool have_available_muon=false;
 	for (int i=0;i<good_mus.size();i++)
 	{
@@ -408,7 +468,7 @@ bool is_pass_ev_selection_TTbar(event ev)
 	}
 	if(!have_available_muon)
 	{ev_flag=2; return false;}
-	
+*/	
 
 
 	
@@ -449,76 +509,14 @@ bool is_pass_ev_selection_TTbar(event ev)
 	//if (ev.missing_et.pt<20){ev_flag=5;return false;}
 	if (ev.missing_et.pt<20){ev_flag=5;return false;}
 
-//test
+	if (get_Tmass(ev)==-1){return false;}
+	
+
 	return true;
 	
-	/*
-	ev_flag:
-		=0: this event is good event
-		=2: !(have good lepton), skip this event.
-		=3: !(have at least 2 good jets), skip this event.
-		=4: !(have 2 good leading jets), skip this event.
-		=5: !(missing Et > 20), skip this event.
-	*/
-}
-
-
-
-double get_Tmass(event ev)
-{
-	vector<THINjet> this_THINjets = ev.THINjets_deoverlap_with_lepton;
-
-	bool find_good_Wqqbar=false;
-	int q1_index=-1;
-	int q2_index=-1;
-	double rec_Wmass=0;
-	for (int i=0;i<this_THINjets.size();i++)
-	{
-		for (int j=0;j<i;j++)
-		{
-			if (!is_pass_cisvv2_13Tev(this_THINjets[i]) && !is_pass_cisvv2_13Tev(this_THINjets[j]) )
-			{
-				TLorentzVector q1l= this_THINjets[i].p4;
-				TLorentzVector q2l= this_THINjets[j].p4;
-				TLorentzVector Wl= q1l+q2l;
-				double this_Wmass = Wl.M();
-				if (abs(this_Wmass-81) <=20){find_good_Wqqbar=true;}
-				if (abs(this_Wmass-81) <= abs(rec_Wmass-81))
-				{
-					rec_Wmass=this_Wmass;
-					q1_index=i;
-					q2_index=j;					
-				}  
-			}
-		}
-	}
-
-	if (!find_good_Wqqbar){return -1;}
-
-	bool find_good_b=false;
-	double rec_Tmass=-1;
-	for (int i=0;i<this_THINjets.size();i++)
-	{
-		if (is_pass_cisvv2_13Tev(this_THINjets[i])) 
-		{
-			find_good_b=true;
-			TLorentzVector bq= this_THINjets[i].p4;
-			TLorentzVector q1l= this_THINjets[q1_index].p4;
-			TLorentzVector q2l= this_THINjets[q2_index].p4;
-			TLorentzVector Tl= bq+q1l+q2l;
-			double this_Tmass = Tl.M();
-			if (abs(this_Tmass-174) <= abs(rec_Tmass-174))
-			{
-				rec_Tmass=this_Tmass;				
-			}  			 
-		}
-	}
-
-	if (!find_good_b){return -1;}
-	else {return rec_Tmass;}
-
 
 }
+
 
 
 
@@ -712,7 +710,7 @@ void Btagging_in_13Tev_data()
 
 
 		
-
+		// hist set
 		// ele var (insignificant var)
 	
 		TH1D* h_ele_pt_a_evcut = new TH1D("ele_pt_a_evcut","ele_pt_a_evcut",50,0,300);		
@@ -723,7 +721,7 @@ void Btagging_in_13Tev_data()
 		TH1D* h_ele_EtaseedAtVtx_a_evcut = new TH1D("ele_EtaseedAtVtx_a_evcut","ele_EtaseedAtVtx_a_evcut",50,-0.2,0.2);
 		TH1D* h_ele_HoverE_a_evcut = new TH1D("ele_HoverE_a_evcut","ele_HoverE_a_evcut",50,0,6);
 		TH1D* h_ele_MissHits_a_evcut = new TH1D("ele_MissHits_a_evcut","ele_MissHits_a_evcut",7,0,7);
-		TH1D* h_ele_MiniIso_a_evcut = new TH1D("ele_MiniIso_a_evcut","ele_MiniIso_a_evcut",50,0,10);
+		//TH1D* h_ele_MiniIso_a_evcut = new TH1D("ele_MiniIso_a_evcut","ele_MiniIso_a_evcut",50,0,10);
 		TH1D* h_ele_SigmaIEtaIEta_a_evcut = new TH1D("ele_SigmaIEtaIEta_a_evcut","ele_SigmaIEtaIEta_a_evcut",50,0,0.08);
 		
 		//mu var (insignificant var)
@@ -734,7 +732,7 @@ void Btagging_in_13Tev_data()
 		TH1D* h_mu_dz_a_evcut = new TH1D("mu_dz_a_evcut","mu_dz_a_evcut",40,-2,2);		
 		TH1D* h_mu_Hits_a_evcut = new TH1D("mu_Hits_a_evcut","mu_Hits_a_evcut",50,0,100);
 		TH1D* h_mu_Matches_a_evcut = new TH1D("mu_Matches_a_evcut","mu_Matches_a_evcut",10,0,10);	
-		TH1D* h_mu_MiniIso_a_evcut = new TH1D("mu_MiniIso_a_evcut","mu_MiniIso_a_evcut",50,0,100);
+		//TH1D* h_mu_MiniIso_a_evcut = new TH1D("mu_MiniIso_a_evcut","mu_MiniIso_a_evcut",50,0,100);
 		TH1D* h_mu_PixelHits_a_evcut = new TH1D("mu_PixelHits_a_evcut","mu_PixelHits_a_evcut",20,0,20);
 		TH1D* h_mu_TrkLayers_a_evcut = new TH1D("mu_TrkLayers_a_evcut","mu_TrkLayers_a_evcut",25,0,25);
 		TH1D* h_mu_TrkPt_a_evcut = new TH1D("mu_TrkPt_a_evcut","mu_TrkPt_a_evcut",50,0,500);
@@ -774,45 +772,74 @@ void Btagging_in_13Tev_data()
 	  	
 	  	//int N_applied_sample=50;
 	  	vector<string> input_files;
-		// single electron channel
+	  	
+
+	  	
+	  	// new version  
+		// single ele channel
+		// we have  102999907 events from all muon channel sample
+		// we have  14580254 events from 1/7 muon channel sample
+		// we have 20640253 events from 1/5 muon channel sample
+
+	  	for (int i=1;i<=411;i++)
+	  	{
+	  		//if(i>205){continue;}
+	  		// %5
+			if (i%7!=0){continue;}
+	  		TString filepath = "/data7/khurana/NCUGlobalTuples/Run2015DFullDataset/crab_SingleElectron-Run2015D-05Oct2015-v1_20151117_2p2fb_SingleEleTextFile/151117_152256/0000/NCUGlobalTuples_"+int_to_string(i)+".root";
+	  		TFile f(filepath);
+			if (f.IsZombie()) {continue; f.Close();} f.Close();
+		
+	  		input_files.push_back("/data7/khurana/NCUGlobalTuples/Run2015DFullDataset/crab_SingleElectron-Run2015D-05Oct2015-v1_20151117_2p2fb_SingleEleTextFile/151117_152256/0000/NCUGlobalTuples_"+int_to_string(i)+".root");
+	  		
+	  	}	  	
+	  	for (int i=1;i<=855;i++)
+	  	{
+	  		//if(i>94){continue;}
+			if (i%7!=0){continue;}
+	  		TString filepath ="/data7/khurana/NCUGlobalTuples/Run2015DFullDataset/crab_SingleElectron-Run2015D-PromptReco-V420151117_2p2fb_SingleEleTextFile/151117_152534/0000/NCUGlobalTuples_"+int_to_string(i)+".root";	  		
+	  		TFile f(filepath);
+			if (f.IsZombie()) {continue; f.Close();} f.Close();
+			
+	  		input_files.push_back("/data7/khurana/NCUGlobalTuples/Run2015DFullDataset/crab_SingleElectron-Run2015D-PromptReco-V420151117_2p2fb_SingleEleTextFile/151117_152534/0000/NCUGlobalTuples_"+int_to_string(i)+".root");
+	  	}
+
+
+		// single muon channel
+		// we have 71641966 events from all muon channel sample
+		// we have 11879377 events from 1/6 muon channel sample
+		// we have 14408988 events from 1/5 muon channel sample
+
 /*
 	  	for (int i=1;i<=411;i++)
 	  	{
 	  		//if(i>205){continue;}
-			// %5
-	  		input_files.push_back("/data7/khurana/NCUGlobalTuples/Run2015D/crab_SingleElectron-Run2015D-PromptReco-V3_20151019/151019_195647/0000/NCUGlobalTuples_"+int_to_string(i)+".root");
+	  		if (i%5!=0){continue;}
+	  		TString filepath ="/data7/syu/NCUGlobalTuples/Run2015D/9b33d00/SingleMuon/crab_SingleMuon-Run2015D-05Oct2015-v1_20151119_2p2fb_SingleMuTextFile/151120_125737/0000/NCUGlobalTuples_"+int_to_string(i)+".root";	  		
+	  		TFile f(filepath);
+			if (f.IsZombie()) {continue; f.Close();} f.Close();
+			
+	  		input_files.push_back("/data7/syu/NCUGlobalTuples/Run2015D/9b33d00/SingleMuon/crab_SingleMuon-Run2015D-05Oct2015-v1_20151119_2p2fb_SingleMuTextFile/151120_125737/0000/NCUGlobalTuples_"+int_to_string(i)+".root");
 	  	}
-	  	for (int i=1;i<=187;i++)
+	  	for (int i=1;i<=855;i++)
 	  	{
 	  		//if(i>94){continue;}
-			// %5
-	  		input_files.push_back("/data7/khurana/NCUGlobalTuples/Run2015D/crab_SingleElectron-Run2015D-PromptReco-V4_20151019/151019_195736/0000/NCUGlobalTuples_"+int_to_string(i)+".root");
+	  		if (i%5!=0){continue;}
+	  		TString filepath ="/data7/syu/NCUGlobalTuples/Run2015D/9b33d00/SingleMuon/crab_SingleMuon-Run2015D-PromptReco-V420151119_2p2fb_SingleMuTextFile/151119_213943/0000/NCUGlobalTuples_"+int_to_string(i)+".root";	  		
+	  		TFile f(filepath);
+			if (f.IsZombie()) {continue; f.Close();} f.Close();
+			
+	  		input_files.push_back("/data7/syu/NCUGlobalTuples/Run2015D/9b33d00/SingleMuon/crab_SingleMuon-Run2015D-PromptReco-V420151119_2p2fb_SingleMuTextFile/151119_213943/0000/NCUGlobalTuples_"+int_to_string(i)+".root");
 	  	}
 */
-
-		// single muon channel
-	  	for (int i=1;i<=411;i++)
-	  	{
-	  		//if(i>205){continue;}
-			// %5
-	  		input_files.push_back("/data7/khurana/NCUGlobalTuples/Run2015D/crab_SingleMuon-Run2015D-PromptReco-V3_20151019/151019_195830/0000/NCUGlobalTuples_"+int_to_string(i)+".root");
-	  	}
-	  	for (int i=1;i<=187;i++)
-	  	{
-	  		//if(i>94){continue;}
-			// %5
-	  		input_files.push_back("/data7/khurana/NCUGlobalTuples/Run2015D/crab_SingleMuon-Run2015D-PromptReco-V4_20151019/151019_195918/0000/NCUGlobalTuples_"+int_to_string(i)+".root");
-	  	}
-
 	  	
 	  	//input_files.push_back("../13TevTTbar/NCUGlobalTuples_100.root");
 	  	//input_files.push_back("../13TevTTbar/NCUGlobalTuples_200.root");
 	  	//input_files.push_back("../13TevTTbar/NCUGlobalTuples_300.root");
 	  	//input_files.push_back("../13TevTTbar/NCUGlobalTuples_400.root");
 	  	
-	  				
-	  	//TreeReader inner_data_for_data(data);
-	  	TreeReader inner_data_for_data(input_files);
+
+	  	TreeReader inner_data_for_data(input_files);	  	
 	  	Nev_data = inner_data_for_data.GetEntriesFast();
 
 
@@ -1036,19 +1063,20 @@ void Btagging_in_13Tev_data()
 
 
 				bool overlap_with_lepton=false;
-				/*
+				
 				for (int elei=0;elei<this_ev.good_eles.size();elei++)
 				{	
 					ele this_ele = this_ev.good_eles[elei];
 					if (delta_R(this_j, this_ele)<0.4){overlap_with_lepton=true;break;}
 				}
-				*/
 				
+				/*
 				for (int mui=0;mui<this_ev.good_mus.size();mui++)
 				{
 					mu this_mu = this_ev.good_mus[mui];
 					if (delta_R(this_j, this_mu)<0.4){overlap_with_lepton=true;break;}
 				}
+				*/
 				
 				if (overlap_with_lepton){ continue;}
 			
@@ -1059,7 +1087,7 @@ void Btagging_in_13Tev_data()
 			events_data.push_back(this_ev);
 			
 			// draw insignificant var (these insignificant var did not saved in class event, excluding pt & eta )
-			// // ele
+			// // ele (only 1 ele decayed from ttbar)
 			
 			Float_t *eledEtaAtVtx=inner_data_for_data.GetPtrFloat("eledEtaAtVtx");
 			Float_t *eledPhiAtVtx=inner_data_for_data.GetPtrFloat("eledPhiAtVtx");
@@ -1067,13 +1095,18 @@ void Btagging_in_13Tev_data()
 			Float_t *eleEtaseedAtVtx=inner_data_for_data.GetPtrFloat("eleEtaseedAtVtx");
 			Float_t *eleHoverE=inner_data_for_data.GetPtrFloat("eleHoverE");
 			Int_t *eleMissHits=inner_data_for_data.GetPtrInt("eleMissHits");
-			Float_t *eleMiniIso=inner_data_for_data.GetPtrFloat("eleMiniIso");
+			//Float_t *eleMiniIso=inner_data_for_data.GetPtrFloat("eleMiniIso");
 			Float_t *eleSigmaIEtaIEta=inner_data_for_data.GetPtrFloat("eleSigmaIEtaIEta");
 
 			if (is_pass_ev_selection(this_ev))
 			{
+				bool find_candidate_ele=false;
 				for (int i=0;i<nEle;i++)
 				{
+					if (eleIsPassLoose[i] && (*((TLorentzVector*)eleP4->At(i))).Pt()>0 && abs( (*((TLorentzVector*)eleP4->At(i))).Eta())<2.4)
+					{find_candidate_ele=true;}
+					else{continue;}
+
 					h_ele_pt_a_evcut->Fill( (*((TLorentzVector*)eleP4->At(i))).Pt());
 			 		h_ele_eta_a_evcut->Fill( (*((TLorentzVector*)eleP4->At(i))).Eta()); 
 			 		h_ele_dEtaAtVtx_a_evcut->Fill(eledEtaAtVtx[i]); 
@@ -1083,19 +1116,21 @@ void Btagging_in_13Tev_data()
 			 		h_ele_EtaseedAtVtx_a_evcut ->Fill(eleEtaseedAtVtx[i]); 
 			 		h_ele_HoverE_a_evcut->Fill(eleHoverE[i]); 
 			 		h_ele_MissHits_a_evcut->Fill(eleMissHits[i]); 
-			 		h_ele_MiniIso_a_evcut->Fill(eleMiniIso[i]); 
+			 		//h_ele_MiniIso_a_evcut->Fill(eleMiniIso[i]); 
 					h_ele_SigmaIEtaIEta_a_evcut->Fill(eleSigmaIEtaIEta[i]); 
+
+					if (find_candidate_ele){break;}
 				}	
 			}
 
 	
 			// // mu (only 1 mu decayed from ttbar)
-			
+/*			
 			Float_t *mudxy=inner_data_for_data.GetPtrFloat("mudxy");	
 			Float_t *mudz=inner_data_for_data.GetPtrFloat("mudz");		
 			Int_t *muHits=inner_data_for_data.GetPtrInt("muHits");		
 			Int_t *muMatches=inner_data_for_data.GetPtrInt("muMatches");		
-			Float_t *muMiniIso=inner_data_for_data.GetPtrFloat("muMiniIso");		
+			//Float_t *muMiniIso=inner_data_for_data.GetPtrFloat("muMiniIso");		
 			Int_t *muPixelHits=inner_data_for_data.GetPtrInt("muPixelHits");		
 			Int_t *muTrkLayers=inner_data_for_data.GetPtrInt("muTrkLayers");		
 			Float_t *muTrkPt=inner_data_for_data.GetPtrFloat("muTrkPt");
@@ -1105,7 +1140,8 @@ void Btagging_in_13Tev_data()
 				bool find_candidate_mu=false;
 				for (int i=0;i<nMu;i++)
 				{
-					if (isTightMuon[i] && (*((TLorentzVector*)muP4->At(i))).Pt()>50){find_candidate_mu=true;}
+					if (isLooseMuon[i] && (*((TLorentzVector*)muP4->At(i))).Pt()>50 && abs( (*((TLorentzVector*)muP4->At(i))).Eta())<2.1)
+					{find_candidate_mu=true;}
 					else{continue;}
 					
 					h_mu_pt_a_evcut->Fill( (*((TLorentzVector*)muP4->At(i))).Pt());	
@@ -1114,7 +1150,7 @@ void Btagging_in_13Tev_data()
 					h_mu_dz_a_evcut->Fill(mudz[i]); 	
 					h_mu_Hits_a_evcut->Fill(muHits[i]); 
 					h_mu_Matches_a_evcut->Fill(muMatches[i]); 
-					h_mu_MiniIso_a_evcut->Fill(muMiniIso[i]); 
+					//h_mu_MiniIso_a_evcut->Fill(muMiniIso[i]); 
 					h_mu_PixelHits_a_evcut->Fill(muPixelHits[i]); 
 					h_mu_TrkLayers_a_evcut->Fill(muTrkLayers[i]); 
 					h_mu_TrkPt_a_evcut->Fill(muTrkPt[i]); 
@@ -1122,6 +1158,7 @@ void Btagging_in_13Tev_data()
 					if (find_candidate_mu){break;}
 				}	
 			}
+*/
 
 			// THINjet var (only 4 good jet decayed from ttbar)
 			
@@ -1179,13 +1216,15 @@ void Btagging_in_13Tev_data()
 
 //fr
 
-fraction_ratio[0][0]=0; fraction_ratio[0][1]=0; fraction_ratio[0][2]=0; fraction_ratio[0][3]=0; fraction_ratio[0][4]=0.0875839; fraction_ratio[0][5]=0.0531188; fraction_ratio[0][6]=0.0556357; fraction_ratio[0][7]=0.0449927; fraction_ratio[0][8]=0.0273639; fraction_ratio[0][9]=0.0169916; fraction_ratio[0][10]=0.00990402; fraction_ratio[0][11]=0.00511435; fraction_ratio[0][12]=0.00271631; fraction_ratio[0][13]=0.00107517; fraction_ratio[0][14]=0.000622784; 
-fraction_ratio[1][0]=0; fraction_ratio[1][1]=0; fraction_ratio[1][2]=0; fraction_ratio[1][3]=0.0451064; fraction_ratio[1][4]=0.0505872; fraction_ratio[1][5]=0.0355391; fraction_ratio[1][6]=0.0171029; fraction_ratio[1][7]=0.00706027; fraction_ratio[1][8]=0.00313955; fraction_ratio[1][9]=0.00374178; fraction_ratio[1][10]=0.000804249; fraction_ratio[1][11]=0.000218861; fraction_ratio[1][12]=0.000157609; fraction_ratio[1][13]=4.00914e-05; fraction_ratio[1][14]=9.03531e-06; 
-fraction_ratio[2][0]=0; fraction_ratio[2][1]=0; fraction_ratio[2][2]=0.132719; fraction_ratio[2][3]=0.160526; fraction_ratio[2][4]=0.111805; fraction_ratio[2][5]=0.0573323; fraction_ratio[2][6]=0.0247349; fraction_ratio[2][7]=0.0101318; fraction_ratio[2][8]=0.00341898; fraction_ratio[2][9]=0.00152005; fraction_ratio[2][10]=0.000576604; fraction_ratio[2][11]=0.000166254; fraction_ratio[2][12]=5.86513e-05; fraction_ratio[2][13]=4.69113e-05; fraction_ratio[2][14]=1.36682e-05; 
-fraction_ratio[3][0]=0; fraction_ratio[3][1]=0.00298734; fraction_ratio[3][2]=0.00652628; fraction_ratio[3][3]=0.00560993; fraction_ratio[3][4]=0.00453953; fraction_ratio[3][5]=0.00227803; fraction_ratio[3][6]=0.000546007; fraction_ratio[3][7]=0.000208304; fraction_ratio[3][8]=0.000195527; fraction_ratio[3][9]=7.69597e-05; fraction_ratio[3][10]=7.5393e-05; fraction_ratio[3][11]=9.69469e-06; fraction_ratio[3][12]=0; fraction_ratio[3][13]=0; fraction_ratio[3][14]=6.14133e-06; 
-fraction_ratio[4][0]=7.79157e-05; fraction_ratio[4][1]=0.000804242; fraction_ratio[4][2]=0.00113812; fraction_ratio[4][3]=0.00106701; fraction_ratio[4][4]=0.000888371; fraction_ratio[4][5]=0.000317116; fraction_ratio[4][6]=0.000215791; fraction_ratio[4][7]=0.000138421; fraction_ratio[4][8]=0.000104826; fraction_ratio[4][9]=4.81961e-07; fraction_ratio[4][10]=7.52689e-06; fraction_ratio[4][11]=0; fraction_ratio[4][12]=0; fraction_ratio[4][13]=0; fraction_ratio[4][14]=0; 
-fraction_ratio[5][0]=3.27018e-05; fraction_ratio[5][1]=0; fraction_ratio[5][2]=0; fraction_ratio[5][3]=9.954e-05; fraction_ratio[5][4]=0; fraction_ratio[5][5]=4.07572e-06; fraction_ratio[5][6]=2.40981e-07; fraction_ratio[5][7]=2.40981e-07; fraction_ratio[5][8]=0; fraction_ratio[5][9]=0; fraction_ratio[5][10]=1.44486e-06; fraction_ratio[5][11]=0; fraction_ratio[5][12]=0; fraction_ratio[5][13]=0; fraction_ratio[5][14]=0; 
-fraction_ratio[6][0]=0; fraction_ratio[6][1]=3.28788e-05; fraction_ratio[6][2]=0; fraction_ratio[6][3]=0; fraction_ratio[6][4]=0; fraction_ratio[6][5]=0; fraction_ratio[6][6]=3.28788e-05; fraction_ratio[6][7]=0; fraction_ratio[6][8]=0; fraction_ratio[6][9]=0; fraction_ratio[6][10]=0; fraction_ratio[6][11]=0; fraction_ratio[6][12]=0; fraction_ratio[6][13]=0; fraction_ratio[6][14]=0; 
+fraction_ratio[0][0]=0; fraction_ratio[0][1]=0; fraction_ratio[0][2]=0; fraction_ratio[0][3]=0; fraction_ratio[0][4]=0.0144474; fraction_ratio[0][5]=0.0699306; fraction_ratio[0][6]=0.0919902; fraction_ratio[0][7]=0.0575296; fraction_ratio[0][8]=0.0388094; fraction_ratio[0][9]=0.0225145; fraction_ratio[0][10]=0.012381; fraction_ratio[0][11]=0.00539195; fraction_ratio[0][12]=0.00452473; fraction_ratio[0][13]=0.00250965; fraction_ratio[0][14]=0.0016047; 
+fraction_ratio[1][0]=0; fraction_ratio[1][1]=0; fraction_ratio[1][2]=0; fraction_ratio[1][3]=0.0269914; fraction_ratio[1][4]=0.0515879; fraction_ratio[1][5]=0.0464255; fraction_ratio[1][6]=0.0261715; fraction_ratio[1][7]=0.013363; fraction_ratio[1][8]=0.00310383; fraction_ratio[1][9]=0.00296305; fraction_ratio[1][10]=0.00151024; fraction_ratio[1][11]=0.000225092; fraction_ratio[1][12]=0.000101922; fraction_ratio[1][13]=0.00012902; fraction_ratio[1][14]=4.35834e-05; 
+fraction_ratio[2][0]=0; fraction_ratio[2][1]=0; fraction_ratio[2][2]=0.0598157; fraction_ratio[2][3]=0.13332; fraction_ratio[2][4]=0.11862; fraction_ratio[2][5]=0.0777534; fraction_ratio[2][6]=0.0357877; fraction_ratio[2][7]=0.0172737; fraction_ratio[2][8]=0.00566128; fraction_ratio[2][9]=0.00268512; fraction_ratio[2][10]=0.0277489; fraction_ratio[2][11]=0.000286117; fraction_ratio[2][12]=8.40537e-05; fraction_ratio[2][13]=5.48169e-05; fraction_ratio[2][14]=2.32807e-05; 
+fraction_ratio[3][0]=0; fraction_ratio[3][1]=0.00048398; fraction_ratio[3][2]=0.00283577; fraction_ratio[3][3]=0.00621093; fraction_ratio[3][4]=0.00502482; fraction_ratio[3][5]=0.00158842; fraction_ratio[3][6]=0.00188543; fraction_ratio[3][7]=0.00033812; fraction_ratio[3][8]=0.000521473; fraction_ratio[3][9]=0.000181353; fraction_ratio[3][10]=4.46707e-06; fraction_ratio[3][11]=1.48902e-06; fraction_ratio[3][12]=0; fraction_ratio[3][13]=0; fraction_ratio[3][14]=0; 
+fraction_ratio[4][0]=-3.41404e-06; fraction_ratio[4][1]=3.41404e-06; fraction_ratio[4][2]=0.00193592; fraction_ratio[4][3]=0.000622117; fraction_ratio[4][4]=0.00179028; fraction_ratio[4][5]=0.000969449; fraction_ratio[4][6]=0.000274906; fraction_ratio[4][7]=2.32807e-05; fraction_ratio[4][8]=0; fraction_ratio[4][9]=0.000542496; fraction_ratio[4][10]=1.48902e-06; fraction_ratio[4][11]=0; fraction_ratio[4][12]=0; fraction_ratio[4][13]=0; fraction_ratio[4][14]=0; 
+fraction_ratio[5][0]=0; fraction_ratio[5][1]=0; fraction_ratio[5][2]=0.00024199; fraction_ratio[5][3]=0.00024199; fraction_ratio[5][4]=0; fraction_ratio[5][5]=0; fraction_ratio[5][6]=0; fraction_ratio[5][7]=0; fraction_ratio[5][8]=0; fraction_ratio[5][9]=0; fraction_ratio[5][10]=0; fraction_ratio[5][11]=0; fraction_ratio[5][12]=0; fraction_ratio[5][13]=0; fraction_ratio[5][14]=0; 
+fraction_ratio[6][0]=0; fraction_ratio[6][1]=0; fraction_ratio[6][2]=0; fraction_ratio[6][3]=0; fraction_ratio[6][4]=0; fraction_ratio[6][5]=3.41404e-06; fraction_ratio[6][6]=0; fraction_ratio[6][7]=0; fraction_ratio[6][8]=0; fraction_ratio[6][9]=0; fraction_ratio[6][10]=0; fraction_ratio[6][11]=0; fraction_ratio[6][12]=0; fraction_ratio[6][13]=0; fraction_ratio[6][14]=0; 
+
+
 
 
 
@@ -1533,18 +1572,7 @@ fraction_ratio[6][0]=0; fraction_ratio[6][1]=3.28788e-05; fraction_ratio[6][2]=0
 
 	// insignificant var
 	// ele var (insignificant var)
-/*
-	save_hist( h_ele_pt_b_evcut, "pic_13Tev_data", "ele_pt_b_evcut");		
-	save_hist( h_ele_eta_b_evcut, "pic_13Tev_data", "ele_eta_b_evcut"); 
-	save_hist( h_ele_dEtaAtVtx_b_evcut, "pic_13Tev_data", "ele_dEtaAtVtx_b_evcut"); 
-	save_hist( h_ele_dPhiAtVtx_b_evcut, "pic_13Tev_data", "ele_dPhiAtVtx_b_evcut"); 
-	save_hist( h_ele_D0_b_evcut, "pic_13Tev_data", "ele_D0_b_evcut"); 
-	save_hist( h_ele_EtaseedAtVtx_b_evcut, "pic_13Tev_data", "ele_EtaseedAtVtx_b_evcut"); 
-	save_hist( h_ele_HoverE_b_evcut, "pic_13Tev_data", "ele_HoverE_b_evcut");
-	save_hist( h_ele_MissHits_b_evcut, "pic_13Tev_data", "ele_MissHits_b_evcut");
-	save_hist( h_ele_MiniIso_b_evcut, "pic_13Tev_data", "ele_MiniIso_b_evcut");
-	save_hist( h_ele_SigmaIEtaIEta_b_evcut, "pic_13Tev_data", "ele_SigmaIEtaIEta_b_evcut"); 
-*/		
+		
 	save_hist( h_ele_pt_a_evcut, "pic_13Tev_data", "ele_pt_a_evcut");		
 	save_hist( h_ele_eta_a_evcut, "pic_13Tev_data", "ele_eta_a_evcut"); 
 	save_hist( h_ele_dEtaAtVtx_a_evcut, "pic_13Tev_data", "ele_dEtaAtVtx_a_evcut"); 
@@ -1553,29 +1581,18 @@ fraction_ratio[6][0]=0; fraction_ratio[6][1]=3.28788e-05; fraction_ratio[6][2]=0
 	save_hist( h_ele_EtaseedAtVtx_a_evcut, "pic_13Tev_data", "ele_EtaseedAtVtx_a_evcut"); 
 	save_hist( h_ele_HoverE_a_evcut, "pic_13Tev_data", "ele_HoverE_a_evcut");
 	save_hist( h_ele_MissHits_a_evcut, "pic_13Tev_data", "ele_MissHits_a_evcut");
-	save_hist( h_ele_MiniIso_a_evcut, "pic_13Tev_data", "ele_MiniIso_a_evcut");
+	//save_hist( h_ele_MiniIso_a_evcut, "pic_13Tev_data", "ele_MiniIso_a_evcut");
 	save_hist( h_ele_SigmaIEtaIEta_a_evcut, "pic_13Tev_data", "ele_SigmaIEtaIEta_a_evcut");
 		
 		//mu var (insignificant var)
-/*
-	save_hist( h_mu_pt_b_evcut, "pic_13Tev_data", "mu_pt_b_evcut");	
-	save_hist( h_mu_eta_b_evcut, "pic_13Tev_data", "mu_eta_b_evcut"); 
-	save_hist( h_mu_dxy_b_evcut, "pic_13Tev_data", "mu_dxy_b_evcut"); 
-	save_hist( h_mu_dz_b_evcut, "pic_13Tev_data", "mu_dz_b_evcut"); 
-	save_hist( h_mu_Hits_b_evcut, "pic_13Tev_data", "mu_Hits_b_evcut"); 
-	save_hist( h_mu_Matches_b_evcut, "pic_13Tev_data", "mu_Matches_b_evcut");
-	save_hist( h_mu_MiniIso_b_evcut, "pic_13Tev_data", "mu_MiniIso_b_evcut"); 
-	save_hist( h_mu_PixelHits_b_evcut, "pic_13Tev_data", "mu_PixelHits_b_evcut"); 
-	save_hist( h_mu_TrkLayers_b_evcut, "pic_13Tev_data", "mu_TrkLayers_b_evcut");
-	save_hist( h_mu_TrkPt_b_evcut, "pic_13Tev_data", "mu_TrkPt_b_evcut"); 
-*/		
+		
 	save_hist( h_mu_pt_a_evcut, "pic_13Tev_data", "mu_pt_a_evcut");	
 	save_hist( h_mu_eta_a_evcut, "pic_13Tev_data", "mu_eta_a_evcut"); 
 	save_hist( h_mu_dxy_a_evcut, "pic_13Tev_data", "mu_dxy_a_evcut"); 
 	save_hist( h_mu_dz_a_evcut, "pic_13Tev_data", "mu_dz_a_evcut"); 
 	save_hist( h_mu_Hits_a_evcut, "pic_13Tev_data", "mu_Hits_a_evcut"); 
 	save_hist( h_mu_Matches_a_evcut, "pic_13Tev_data", "mu_Matches_a_evcut");
-	save_hist( h_mu_MiniIso_a_evcut, "pic_13Tev_data", "mu_MiniIso_a_evcut"); 
+	//save_hist( h_mu_MiniIso_a_evcut, "pic_13Tev_data", "mu_MiniIso_a_evcut"); 
 	save_hist( h_mu_PixelHits_a_evcut, "pic_13Tev_data", "mu_PixelHits_a_evcut"); 
 	save_hist( h_mu_TrkLayers_a_evcut, "pic_13Tev_data", "mu_TrkLayers_a_evcut");
 	save_hist( h_mu_TrkPt_a_evcut, "pic_13Tev_data", "mu_TrkPt_a_evcut"); 
